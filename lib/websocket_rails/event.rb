@@ -128,7 +128,20 @@ module WebsocketRails
     end
 
     def as_json
-      [encoded_name, data, metadata]
+      [encoded_name, serialized_data, metadata]
+    end
+
+    def serialized_data
+      resource_serializer = ::ActiveModel::Serializer.serializer_for(data)
+      if resource_serializer
+        serializer = resource_serializer.new(data)
+        config_adapter = ::ActiveModelSerializers.config.adapter
+        adapter_class = ::ActiveModel::Serializer::Adapter.adapter_class(config_adapter)
+        adapter = adapter_class.new(serializer)
+        adapter.as_json
+      else
+        data
+      end
     end
 
     def metadata
