@@ -18,6 +18,10 @@ module WebsocketRails
       Event.new :client_error, data, :connection => connection
     end
 
+    def new_on_ping(connection)
+      Event.new 'websocket_rails.ping', {}, :connection => connection
+    end
+
     def new_on_invalid_event_received(connection, data=nil)
       Event.new :invalid_event, data, :connection => connection
     end

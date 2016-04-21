@@ -28,6 +28,7 @@ module WebsocketRails
       @delegate.instance_variable_set(:@_request, request)
 
       bind_message_handler
+      start_ping_timer
     rescue => ex
       raise InvalidConnectionError, ex.message
     end
@@ -66,7 +67,13 @@ module WebsocketRails
 
     def close_connection
       @data_store.destroy!
+      @ping_timer.try(:cancel)
       dispatcher.connection_manager.close_connection self
+    end
+
+    def force_close
+      trigger Event.new_on_close(self)
+      close_connection
     end
 
     def rack_response
@@ -108,6 +115,16 @@ module WebsocketRails
        end
     end
 
+    def ping_interval
+      @ping_interval ||= WebsocketRails.config.default_ping_interval
+    end
+
+    def ping_interval=(interval)
+      @ping_interval = interval.to_i
+      @ping_timer.try(:cancel)
+      start_ping_timer
+    end
+
     private
 
     def dispatch(event)
@@ -134,6 +151,26 @@ module WebsocketRails
       @websocket.onclose   = @message_handler.method(:on_close)
       @websocket.onerror   = @message_handler.method(:on_error)
     end
+
+    attr_accessor :pong
+    public :pong, :pong=
+
+    def start_ping_timer
+      @pong = true
+        # Set negative interval to nil to deactivate periodic pings
+        if ping_interval > 0
+          @ping_timer = EM::PeriodicTimer.new(ping_interval) do
+            if pong == true
+              self.pong = false
+              ping = Event.new_on_ping self
+              trigger ping
+            else
+              @ping_timer.cancel
+              force_close
+            end
+          end
+        end
+      end
 
   end
 end
