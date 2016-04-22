@@ -16,9 +16,13 @@ module WebsocketRails
     end
 
     def subscribe(connection)
-      info "#{connection} subscribed to channel #{name}"
-      trigger 'subscriber_join', connection.user if config.broadcast_subscriber_events? && connection.protocol.blank?
-      @subscribers << connection
+      if !@subscribers.include?(connection)
+        info "#{connection} subscribed to channel #{name}"
+        trigger 'subscriber_join', connection.user if config.broadcast_subscriber_events? && connection.protocol.blank?
+        @subscribers << connection
+      else
+        info "#{connection} re-subscribed to channel #{name}"
+      end
       send_token connection if connection.protocol.blank?
     end
 
