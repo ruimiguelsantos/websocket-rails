@@ -71,11 +71,6 @@ module WebsocketRails
       dispatcher.connection_manager.close_connection self
     end
 
-    def force_close
-      trigger Event.new_on_close(self)
-      close_connection
-    end
-
     def rack_response
       [ -1, {}, [] ]
     end
@@ -160,13 +155,13 @@ module WebsocketRails
         # Set negative interval to nil to deactivate periodic pings
         if ping_interval > 0
           @ping_timer = EM::PeriodicTimer.new(ping_interval) do
-            if pong == true
+            if self.pong == true
               self.pong = false
               ping = Event.new_on_ping self
               trigger ping
             else
               @ping_timer.cancel
-              force_close
+              close!
             end
           end
         end
